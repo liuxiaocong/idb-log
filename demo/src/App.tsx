@@ -5,7 +5,7 @@ import { createLogConn } from "idb-log";
 let id = 1;
 const { log, exportLog } = createLogConn({
   project: "Todo",
-  nameSpace: "user-action-log",
+  nameSpace: "user-action-log-3",
   maxLogCount: 20,
 });
 function App() {

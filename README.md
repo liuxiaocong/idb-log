@@ -131,3 +131,8 @@ const deleteWhenOverAmount = (
 - https://www.ruanyifeng.com/blog/2018/07/indexeddb.html
 - https://www.zhangxinxu.com/wordpress/2017/07/html5-indexeddb-js-example/
 - https://segmentfault.com/a/1190000018429380
+
+
+### NPM
+
+- https://www.npmjs.com/package/idb-log

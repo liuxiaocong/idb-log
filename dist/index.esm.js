@@ -183,8 +183,11 @@ var removeDb = function removeDb(project, db, callbackDBRemoved) {
   };
 };
 
-var openDb = function openDb(project, callbackDBReady) {
-  var request = window.indexedDB.open(project);
+var openDb = function openDb(props) {
+  var project = props.project,
+      callbackDBReady = props.callbackDBReady,
+      needCreateNewTable = props.needCreateNewTable;
+  var request = needCreateNewTable ? window.indexedDB.open(project, new Date().getTime()) : window.indexedDB.open(project);
 
   request.onerror = function (event) {
     console.error("IndexedDB open error");
@@ -220,29 +223,35 @@ var openDb = function openDb(project, callbackDBReady) {
     var _event$target3;
 
     var db = (_event$target3 = event.target) === null || _event$target3 === void 0 ? void 0 : _event$target3.result;
-    callbackDBReady(db);
+    callbackDBReady(db, true);
   };
 };
 
 var downloadIdbLog = function downloadIdbLog(project, nameSpace, label) {
   var dbTableName = "".concat(nameSpace, "_log");
-  openDb(project, function (db) {
-    logExport(db, dbTableName, label);
+  openDb({
+    project: project,
+    callbackDBReady: function callbackDBReady(db) {
+      logExport(db, dbTableName, label);
+    }
   });
 };
 
 var showIdbLog = function showIdbLog(project, nameSpace, label) {
   var dbTableName = "".concat(nameSpace, "_log");
-  openDb(project, function (db) {
-    readWithLabel({
-      db: db,
-      dbTableName: dbTableName,
-      label: label,
-      keepValueObject: true,
-      callback: function callback(list) {
-        console.log(_JSON$stringify(list));
-      }
-    });
+  openDb({
+    project: project,
+    callbackDBReady: function callbackDBReady(db) {
+      readWithLabel({
+        db: db,
+        dbTableName: dbTableName,
+        label: label,
+        keepValueObject: true,
+        callback: function callback(list) {
+          console.log(_JSON$stringify(list));
+        }
+      });
+    }
   });
 };
 
@@ -292,16 +301,24 @@ var createLogConn = function createLogConn(props) {
     return true;
   };
 
-  openDb(project, function (dbConn) {
-    db = dbConn;
+  openDb({
+    project: project,
+    needCreateNewTable: true,
+    callbackDBReady: function callbackDBReady(dbConn, canCreateTable) {
+      db = dbConn;
 
-    if (!db.objectStoreNames.contains(dbTableName)) {
-      var objectStore = db.createObjectStore(dbTableName, {
-        autoIncrement: true,
-        keyPath: "id"
-      });
-      objectStore.createIndex("label", "label");
-      objectStore.createIndex("value", "value");
+      if (!canCreateTable) {
+        return;
+      }
+
+      if (!db.objectStoreNames.contains(dbTableName)) {
+        var objectStore = db.createObjectStore(dbTableName, {
+          autoIncrement: true,
+          keyPath: "id"
+        });
+        objectStore.createIndex("label", "label");
+        objectStore.createIndex("value", "value");
+      }
     }
   });
   return {

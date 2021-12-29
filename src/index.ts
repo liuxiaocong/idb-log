@@ -191,11 +191,15 @@ const removeDb = (
   };
 };
 
-const openDb = (
-  project: string,
-  callbackDBReady: (db: IDBDatabase) => void
-) => {
-  const request = window.indexedDB.open(project);
+const openDb = (props: {
+  project: string;
+  callbackDBReady: (db: IDBDatabase, canCreateTable?: boolean) => void;
+  needCreateNewTable?: boolean;
+}) => {
+  const { project, callbackDBReady, needCreateNewTable } = props;
+  const request = needCreateNewTable
+    ? window.indexedDB.open(project, new Date().getTime())
+    : window.indexedDB.open(project);
   request.onerror = function (event: any) {
     console.error("IndexedDB open error");
     if (event.target.error && event.target.error.name == "QuotaExceededError") {
@@ -222,29 +226,35 @@ const openDb = (
   //unable to using evant: IDBVersionChangeEvent
   request.onupgradeneeded = function (event: any) {
     const db = event.target?.result;
-    callbackDBReady(db);
+    callbackDBReady(db, true);
   };
 };
 
 const downloadIdbLog = (project: string, nameSpace: string, label?: string) => {
   const dbTableName: string = `${nameSpace}_log`;
-  openDb(project, (db: IDBDatabase) => {
-    logExport(db, dbTableName, label);
+  openDb({
+    project,
+    callbackDBReady: (db: IDBDatabase) => {
+      logExport(db, dbTableName, label);
+    },
   });
 };
 
 const showIdbLog = (project: string, nameSpace: string, label?: string) => {
   const dbTableName: string = `${nameSpace}_log`;
-  openDb(project, (db: IDBDatabase) => {
-    readWithLabel({
-      db,
-      dbTableName,
-      label,
-      keepValueObject: true,
-      callback: (list) => {
-        console.log(JSON.stringify(list));
-      },
-    });
+  openDb({
+    project,
+    callbackDBReady: (db: IDBDatabase) => {
+      readWithLabel({
+        db,
+        dbTableName,
+        label,
+        keepValueObject: true,
+        callback: (list) => {
+          console.log(JSON.stringify(list));
+        },
+      });
+    },
   });
 };
 
@@ -254,9 +264,7 @@ const removeByID = (db: IDBDatabase, dbTableName: string, id: number) => {
     .objectStore(dbTableName)
     .delete(id);
 
-  request.onsuccess = function (event) {
-    
-  };
+  request.onsuccess = function (event) {};
 };
 const deleteWhenOverAmount = (
   db: IDBDatabase,
@@ -301,16 +309,24 @@ const createLogConn = (props: {
     }
     return true;
   };
-  openDb(project, (dbConn: IDBDatabase) => {
-    db = dbConn;
-    if (!db.objectStoreNames.contains(dbTableName)) {
-      const objectStore = db.createObjectStore(dbTableName, {
-        autoIncrement: true,
-        keyPath: "id",
-      });
-      objectStore.createIndex("label", "label");
-      objectStore.createIndex("value", "value");
-    }
+  openDb({
+    project,
+    needCreateNewTable: true,
+    callbackDBReady: (dbConn: IDBDatabase, canCreateTable?: boolean) => {
+      db = dbConn;
+      if (!canCreateTable) {
+        return;
+      }
+
+      if (!db.objectStoreNames.contains(dbTableName)) {
+        const objectStore = db.createObjectStore(dbTableName, {
+          autoIncrement: true,
+          keyPath: "id",
+        });
+        objectStore.createIndex("label", "label");
+        objectStore.createIndex("value", "value");
+      }
+    },
   });
   return {
     log: (label: string, value: any) => {
