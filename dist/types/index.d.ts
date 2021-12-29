@@ -1,7 +1,10 @@
-/// <reference types="react" />
-import './index.less';
-interface ButtonProps {
-    buttonWord: string;
-}
-declare const Button: ({ buttonWord }: ButtonProps) => JSX.Element;
-export default Button;
+declare const createLogConn: (props: {
+    project: string;
+    nameSpace: string;
+    version?: number | undefined;
+    maxLogCount?: number | undefined;
+}) => {
+    log: (label: string, value: any) => void;
+    exportLog: (label: string, count?: number | undefined) => void;
+};
+export { createLogConn };
